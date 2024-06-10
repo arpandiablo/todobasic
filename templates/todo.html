@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>To-Do List</title>
+</head>
+<body>
+    <div class="container">
+        <h2>To-Do List</h2>
+        <button id="signout-button">Sign Out</button>
+        <form id="todo-form">
+            <input type="text" id="todo-task" placeholder="New Task" required>
+            <button type="submit">Add Task</button>
+        </form>
+        <ul id="todo-list"></ul>
+    </div>
+
+    <script>
+        const apiUrl = 'http://127.0.0.1:5000';
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        async function fetchTodos() {
+            const response = await fetch(`${apiUrl}/auth/todos`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const todos = await response.json();
+            const todoList = document.getElementById('todo-list');
+            todoList.innerHTML = '';
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.textContent = todo.task;
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.onclick = () => editTask(todo.id);
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteTask(todo.id);
+                li.appendChild(editButton);
+                li.appendChild(deleteButton);
+                todoList.appendChild(li);
+            });
+        }
+
+        async function addTask(task) {
+            await fetch(`${apiUrl}/auth/todos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ task })
+            });
+            fetchTodos();
+        }
+
+        async function editTask(id) {
+            const newTask = prompt('Enter new task:');
+            if (newTask) {
+                await fetch(`${apiUrl}/auth/todos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ task: newTask })
+                });
+                fetchTodos();
+            }
+        }
+
+        async function deleteTask(id) {
+            await fetch(`${apiUrl}/auth/todos/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            fetchTodos();
+        }
+
+        async function signOut() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        document.getElementById('signout-button').addEventListener('click', signOut);
+
+        document.getElementById('todo-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const task = document.getElementById('todo-task').value;
+            await addTask(task);
+            document.getElementById('todo-task').value = '';
+        });
+
+        fetchTodos();
+    </script>
+</body>
+</html>
